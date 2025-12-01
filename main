@@ -1,0 +1,156 @@
+import pygame as pg
+from pygame.locals import *
+from sys import exit
+from random import randint
+from math import floor
+from time import sleep
+
+# Caracteristicas janela
+pg.init()
+relogio = pg.time.Clock()
+largura: int = 640
+altura: int = 480
+tela = pg.display.set_mode((largura, altura))
+pg.display.set_caption("Jogo")
+fonte = pg.font.SysFont('arial', 30)
+wait: float = 0.2
+
+# Direção aleaória da bola no começo do jogo
+def direction():
+    return (-1)**randint(0,1)
+
+# Caracteríticas barras e jogador
+x_player: int = floor(largura/7)
+y_player: float = floor((altura/2)-100)
+largura_barra:int = 5
+altura_barra:int = 100
+
+# Estado inicial bot e bola
+x_bot = x_bot_inicial = floor(largura/1.2)
+y_bot = y_bot_inicial = (altura/2)-100
+x_bola = x_bola_inicial = largura/2
+y_bola = y_bola_inicial = altura/2
+# Raio bola
+rad: int = 10
+
+# Velocidade Player e bola
+vel_player: int = 6
+vel_bola_x: float = 2.5 * direction()
+vel_bola_y: float = 2.5 * direction()
+batida_inicial: int = 0
+
+score_player: int = 0
+score_bot: int = 0
+
+# Movimento bot
+def bot_chase(bot_y, bola_y):
+    # Bola em diração ao bot
+    # Bot persegue a bola
+    if vel_bola_x > 0:
+        vel_bot = 3.5
+        if bola_y < bot_y+(altura_barra/2):
+            if bot_y <= 40:
+                return bot_y
+            else:
+                return bot_y - vel_bot
+        else:
+            if bot_y <= 370:
+                return bot_y + vel_bot
+            else:
+                return bot_y
+    # Bola em direção ao player
+    else:
+        vel_bot = 2
+        # Bot volta para o meio
+        if bot_y+(altura_barra/2) > altura/2:
+            return bot_y - vel_bot
+        elif bot_y+(altura_barra/2) == altura/2:
+            return bot_y
+        else:
+            return bot_y + vel_bot
+
+
+while True:
+    dt = relogio.tick(60)/1000
+    tela.fill((0,0,0))
+    mensagem: str = f"{score_player} x {score_bot}"
+    texto_formatado = fonte.render(mensagem,1,(255,255,255))
+    for event in pg.event.get():
+        if event.type == QUIT :
+            pg.quit()
+            exit()
+    # Player
+    ret_player = pg.draw.rect(tela,(0,0,255),(x_player,y_player,largura_barra,altura_barra))
+    # Bot
+    ret_bot = pg.draw.rect(tela,(255, 0, 0),(x_bot, y_bot, largura_barra, altura_barra))
+    # Bola
+    bola = pg.draw.circle(tela,(255,255,255),(x_bola,y_bola),rad)
+    # Extremos e gols
+    gol_player = pg.draw.line(tela, (0, 0, 0), (10, 0), (10, 480))
+    gol_bot = pg.draw.line(tela, (0, 0, 0), (630, 0), (630, 480))
+    ext_cima = pg.draw.line(tela, (0, 255, 0), (0, 40), (640, 40), 5)
+    ext_baixo = pg.draw.line(tela, (0, 255, 0), (0, 470), (640, 470), 5)
+
+    # Movimento Bola
+    x_bola += vel_bola_x * dt * 60
+    y_bola += vel_bola_y * dt * 60
+    if batida_inicial == 1:
+        vel_bola_x *= 2
+        vel_bola_y *= 2
+        batida_inicial += 1
+
+    # Movimento Player
+    if not ret_player.colliderect(ext_cima):
+        if pg.key.get_pressed()[K_UP] or pg.key.get_pressed()[K_w]:
+            y_player -= vel_player
+    if not ret_player.colliderect(ext_baixo):
+        if pg.key.get_pressed()[K_DOWN] or pg.key.get_pressed()[K_s]:
+            y_player += vel_player
+
+    # Colisões Bola
+    if bola.colliderect(ext_cima):
+        vel_bola_y *= -1
+        y_bola += rad
+    if bola.colliderect(ext_baixo):
+        vel_bola_y *= -1
+        y_bola -= rad
+    if bola.colliderect(ret_player):
+        vel_bola_x *= -1
+        x_bola += rad
+        batida_inicial += 1
+    if bola.colliderect(ret_bot):
+        vel_bola_x *= -1
+        x_bola -= rad
+        batida_inicial += 1
+
+    # Gol Player
+    if bola.colliderect(gol_player):
+        score_bot +=1
+        sleep(wait)
+        if batida_inicial != 0:
+            batida_inicial = 0
+            vel_bola_x *= 0.5
+            vel_bola_y *= 0.5
+        x_bola = x_bola_inicial
+        y_bola = y_bola_inicial
+        x_bot = x_bot_inicial
+        y_bot = y_bot_inicial
+
+    # Gol Bot
+    if bola.colliderect(gol_bot):
+        score_player +=1
+        sleep(wait)
+        if batida_inicial != 0:
+            batida_inicial = 0
+            vel_bola_x *= 0.5
+            vel_bola_y *= 0.5
+        x_bola = x_bola_inicial
+        y_bola = y_bola_inicial
+        x_bot = x_bot_inicial
+        y_bot = y_bot_inicial
+
+    # Movimento Bot
+    y_bot = bot_chase(y_bot, y_bola)
+
+    tela.blit(texto_formatado, (290,5))
+    pg.display.update()
